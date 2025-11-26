@@ -1,0 +1,58 @@
+# Critère 1 : Analyse de la Variabilité de la Mesure
+
+Ce module contient les scripts statistiques pour valider la reproductibilité du protocole DSI.
+
+## 📊 1. Indicateurs Mathématiques
+
+L'analyse suit une hiérarchie stricte :
+
+* **Niveau 1 (Local) :** $\sigma_{jk}$ (Écart-type par pixel sur 7 répétitions).
+* **Niveau 2 (Patient) :** $\Sigma_k$ (Moyenne des écarts-types locaux).
+* **Niveau 3 (Global) :** $\Sigma_{global}$ (Moyenne des $\Sigma_k$ sur $N$ patients).
+
+---
+
+## 🧪 2. Validation Statistique (Test de Student)
+
+Le fichier `statistical_validation.py` implémente les tests d'hypothèses définis dans le protocole de thèse.
+
+### 2.1 Hypothèses
+On cherche à démontrer que la reproductibilité moyenne est strictement inférieure au seuil clinique de **20 µm**.
+* $H_0 : \sigma_{global} \ge 20 \mu m$
+* $H_1 : \sigma_{global} < 20 \mu m$ (Test unilatéral gauche, $\alpha = 0.05$)
+
+### 2.2 Statistique de Test
+On utilise un test t à un échantillon basé sur la loi de Student à $N-1$ degrés de liberté.
+
+$$t = \frac{\sigma_{global} - 20}{S_{\sigma} / \sqrt{N}}$$
+
+Où $S_{\sigma}$ est l'écart-type de l'échantillon des valeurs $\Sigma_k$.
+
+### 2.3 Règles de Décision (Implémentées)
+
+Le script vérifie automatiquement les deux conditions de succès :
+
+1.  **Test T :** Si $t_{calculé} < t_{\alpha, N-1}$ (valeur critique négative), alors on rejette $H_0$. La reproductibilité est jugée **SATISFAISANTE**.
+2.  **Intervalle de Confiance :** Si la borne supérieure de l'IC à 95% est inférieure à 20 µm ($IC_{95\%, sup} < 20 \mu m$), la reproductibilité est **SATISFAISANTE**.
+
+Formule IC Sup :
+$$IC_{sup} = \sigma_{global} + t_{0.95, N-1} \frac{S_{\sigma}}{\sqrt{N}}$$
+
+---
+
+## 📂 Scripts Python
+
+| Script | Fonction |
+| :--- | :--- |
+| `point_sigma_analysis_2.0.py` | Micro-analyse vectorisée d'un point $(i,j)$. |
+| `global_sigma_analysis.py` | Calcul du $\Sigma_k$ pour un patient. |
+| `population_sigma_analysis.py` | Calcul de la moyenne brute de la population. |
+| **`statistical_validation.py`** | **Script Final.** Exécute le test statistique et donne le verdict (Satisfaisant/Insuffisant). |
+
+## 🚀 Utilisation
+
+Pour obtenir la validation finale de votre thèse :
+
+```bash
+cd critere_1
+python statistical_validation.py
