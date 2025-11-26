@@ -43,7 +43,7 @@ Le script vérifie automatiquement les deux conditions de succès :
 **Formule de l'Intervalle de Confiance Supérieur :**
 
 $$
-IC_{95\%, sup} = \bar{\sigma}_{global} + t_{0.95; N-1} \times \frac{\sigma_{\sigma_{global}}}{\sqrt{N}}
+IC_{95\%\, sup} = \bar{\sigma}_{global} + t_{0.95; N-1} \times \frac{\sigma_{\sigma_{global}}}{\sqrt{N}}
 $$
 
 ---
