@@ -25,7 +25,7 @@ On cherche à démontrer que la reproductibilité moyenne est strictement infér
 ### 2.2 Statistique de Test
 On utilise un test t à un échantillon basé sur la loi de Student à $N-1$ degrés de liberté.
 
-![Formule Test T](https://latex.codecogs.com/svg.latex?\Large&space;t=\frac{\bar{\sigma}_{global}-20}{\sigma_{\sigma_{global}}/\sqrt{N}})
+![Formule Test T](https://latex.codecogs.com/svg.latex?\color{white}\Large&space;t=\frac{\bar{\sigma}_{global}-20}{\sigma_{\sigma_{global}}/\sqrt{N}})
 
 Où :
 * **Numérateur** : Distance entre la moyenne observée et le seuil (20).
@@ -40,7 +40,7 @@ Le script vérifie automatiquement les deux conditions de succès :
 
 **Formule de l'Intervalle de Confiance Supérieur :**
 
-![Formule IC Sup](https://latex.codecogs.com/svg.latex?\Large&space;IC_{95\%,sup}=\bar{\sigma}_{global}+t_{0.95;N-1}\times\frac{\sigma_{\sigma_{global}}}{\sqrt{N}})
+![Formule IC Sup](https://latex.codecogs.com/svg.latex?\color{white}\Large&space;IC_{95\%,sup}=\bar{\sigma}_{global}+t_{0.95;N-1}\times\frac{\sigma_{\sigma_{global}}}{\sqrt{N}})
 
 ---
 
