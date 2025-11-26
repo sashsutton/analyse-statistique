@@ -19,17 +19,19 @@ Le fichier `statistical_validation.py` implémente les tests d'hypothèses défi
 ### 2.1 Hypothèses
 On cherche à démontrer que la reproductibilité moyenne est strictement inférieure au seuil clinique de **20 µm**.
 
-* **H0** : La reproductibilité est supérieure ou égale à 20 µm.
-* **H1** : La reproductibilité est strictement inférieure à 20 µm (Test unilatéral gauche, $\alpha = 0.05$).
+* **H0** : $\bar{\sigma}_{global} \ge 20 \mu m$
+* **H1** : $\bar{\sigma}_{global} < 20 \mu m$ (Test unilatéral gauche, $\alpha = 0.05$)
 
 ### 2.2 Statistique de Test
 On utilise un test t à un échantillon basé sur la loi de Student à $N-1$ degrés de liberté.
 
-![Formule Test T](https://latex.codecogs.com/svg.latex?\color{white}\Large&space;t=\frac{\bar{\sigma}_{global}-20}{\sigma_{\sigma_{global}}/\sqrt{N}})
+$$
+t = \frac{\bar{\sigma}_{global} - 20}{\sigma_{\sigma_{global}} / \sqrt{N}}
+$$
 
 Où :
-* **Numérateur** : Distance entre la moyenne observée et le seuil (20).
-* **Dénominateur** : Erreur standard de la moyenne.
+* $\bar{\sigma}_{global}$ est la moyenne de l'échantillon.
+* $\sigma_{\sigma_{global}}$ est l'écart-type de l'échantillon des valeurs $\Sigma_k$.
 
 ### 2.3 Règles de Décision (Implémentées)
 
@@ -40,7 +42,9 @@ Le script vérifie automatiquement les deux conditions de succès :
 
 **Formule de l'Intervalle de Confiance Supérieur :**
 
-![Formule IC Sup](https://latex.codecogs.com/svg.latex?\color{white}\Large&space;IC_{95\%,sup}=\bar{\sigma}_{global}+t_{0.95;N-1}\times\frac{\sigma_{\sigma_{global}}}{\sqrt{N}})
+$$
+IC_{95\%, sup} = \bar{\sigma}_{global} + t_{0.95; N-1} \times \frac{\sigma_{\sigma_{global}}}{\sqrt{N}}
+$$
 
 ---
 
