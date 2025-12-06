@@ -1,84 +1,90 @@
-# README - Analyse de la Compressibilité Gingivale (3D)
+# Analyse Statistique de la Compressibilité Gingivale (In Vivo)
 
-## Contexte du Projet
+Ce projet de thèse vise à développer et valider une méthode de **quantification de la compressibilité des tissus mous** (gencive) par scanner intra-oral. 
 
-Ce projet s'inscrit dans le cadre d'une thèse en dentaire visant à quantifier la compressibilité des tissus mous (gencive) **in vivo**. L'objectif est de mesurer la déformation de la gencive sous l'effet d'une pression d'air calibrée, en utilisant un scanner intra-oral.
-
-### Méthode d'acquisition
-
-Le scanner utilise une technologie de **profilométrie laser** : il projette des lignes et enregistre une *Height Map* (carte de hauteurs) où chaque pixel correspond à une altitude ( Z ).
-
-* **Scan A (Baseline)** : mâchoire au repos (sans pression).
-* **Scan B (Sous contrainte)** : projection d'un jet d'air comprimé pour enfoncer les tissus mous au point d'impact.
+L'objectif est double : valider la fiabilité de l'instrument (Critère 1) et sa capacité à distinguer les tissus sains des tissus mous/infiltrés (Critère 2).
 
 ---
 
-## Structure des Données (Input)
+## 🔄 Pipeline de Traitement des Données
 
-Les données sont organisées de manière hiérarchique : lot → patient → type de mesure.
+Le projet est structuré en modules séquentiels simulant l'acquisition et le traitement clinique :
 
-### Arborescence
-
-```
-batch_i/
-├── dpi/                  [RÉFÉRENCE - REPOS]
-│   └── dpi_height.csv    (Scan unique de la mâchoire sans air)
-│
-└── dsi/                  [EXPÉRIMENTATION - PRESSION]
-    ├── dsi_01/           <-- Répétition Statistique n°1
-    │   ├── scan_1.csv    (Angle A)
-    │   ├── ...
-    │   └── scan_5.csv    (Angle E)
-    ├── dsi_02/           <-- Répétition Statistique n°2
-    ├── ...
-    └── dsi_07/           <-- Répétition Statistique n°7
+```mermaid
+graph LR
+    A[Data Generator] -->|Raw CSVs| B(Batch Processor)
+    B -->|DSI Mean| C{Analyse}
+    C -->|Stabilité| D[Critère 1]
+    C -->|Discrimination| E[Critère 2]
 ```
 
-### Spécifications des fichiers CSV
+### 1. Génération de Données (`data_generator.py`)
+Simule des cohortes de patients virtuels à partir d'un scan maître (`dpi_height.csv`).
+*   Génère les dossiers `batch_XXX`.
+*   Simule le bruit de capteur et les artéfacts de mouvement.
+*   Simule la déformation des tissus sous pression (Gradient étendu).
 
-* **Format** : CSV sans en-tête.
-* **Type** : matrice 2D de flottants (Height Map).
-* **Unités** :
-
-  * Axes X/Y : 1 pixel = 12.5 µm (0.0125 mm)
-  * Axe Z : hauteur en mm
-* **Valeur sentinelle** : les zones non mesurées ou bruitées sont marquées **-999.99**.
-
----
-
-# Analyse Automatisée de la Compressibilité Gingivale (Batch Processor)
-
-Ce projet contient les scripts de traitement de données pour l'analyse de la déformation des tissus mous (gencive) sous pression d'air, dans le cadre d'une thèse en chirurgie dentaire / imagerie 3D.
-
-## 📌 Protocole Scientifique & Données
-
-Le scanner intra-oral acquiert des matrices de hauteurs ($Z$). Pour analyser la compressibilité, nous utilisons le protocole **DSI (Acquisition sous Pression d'Air)** structuré comme suit :
-
-1.  **Multi-Angles (Fichiers)** : Pour éviter les zones d'ombre, chaque mesure est composée de **5 scans** pris sous des angles d'incidence différents.
-2.  **Répétitions Statistiques (Dossiers)** : Pour garantir la fiabilité de la mesure, cette expérience est répétée **7 fois** (Dossiers `dsi_01` à `dsi_07`) dans des conditions identiques.
-
-## 📂 Structure des Fichiers
-
-```text
-projet/
-├── batch_processor.py      <-- Script de traitement
-├── batch/                  <-- Données brutes
-    ├── batch_001/          <-- Patient 1
-    │   ├── dsi/
-    │       ├── dsi_01/     <-- Répétition Statistique n°1
-    │       │   ├── scan_1.csv  (Angle A)
-    │       │   ├── ...
-    │       │   └── scan_5.csv  (Angle E)
-    │       ├── ...
-    │       └── dsi_07/     <-- Répétition Statistique n°7
-```
+### 2. Traitement des Scans (`batch_processor.py`)
+Nettoie et fusionne les données brutes :
+*   **Fusion Multi-Angles** : Combine 5 prises de vue pour combler les zones d'ombre (Min-Composite).
+*   **Moyennage Statistique** : Calcule le scan moyen (`dsi_mean`) à partir de 7 répétitions pour réduire le bruit aléatoire.
 
 ---
 
-## Pré-requis
+## 🔬 Critères d'Évaluation
 
-* Python 3.8+
-* Bibliothèques : `numpy`, `pandas`, `scipy`
+### [Critère 1 : Stabilité & Reproductibilité](./critere_1/)
+**"Est-ce que l'appareil mesure toujours la même chose ?"**
+*   **Analyse** : Calcul de l'écart-type local ($\sigma$) pixel par pixel sur les 7 répétitions.
+*   **Visualisation** : 
+    *   **Histogramme Empilé** : Distribution de l'instabilité par échantillon.
+    *   **Heatmap 3D** : Projection de l'instabilité sur l'anatomie réelle du patient pour localiser les erreurs.
+*   **Objectif** : Instabilité moyenne < 20 µm.
+
+### [Critère 2 : Discrimination Tissulaire](./critere_2/)
+**"Est-ce que l'appareil voit la différence entre os et gencive ?"**
+*   **Analyse** : Comparaison de la dépressibilité entre une zone dure (Crête) et une zone molle (Vestibule), identifiées automatiquement par analyse géométrique.
+*   **Indicateur** : Ratio Signal-sur-Bruit (SNR).
+*   **Visualisation** : Heatmap 3D (Rouge = Mou, Bleu = Dur).
 
 ---
 
+## 🚀 Guide de Démarrage Rapide
+
+1.  **Installation**
+    ```bash
+    # Créer un venv
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install numpy pandas scipy matplotlib seaborn
+    ```
+
+2.  **Génération des Données** (Optionnel si déjà fait)
+    ```bash
+    python data_generator.py
+    ```
+
+3.  **Traitement des Lots**
+    ```bash
+    python batch_processor.py
+    ```
+
+4.  **Lancer les Analyses**
+    ```bash
+    # Analyse de Stabilité
+    cd critere_1
+    python generate_thesis_report.py
+
+    # Analyse de Discrimination
+    cd ../critere_2
+    python run_critere2.py
+    ```
+
+---
+
+## 📂 Structure du Répertoire
+
+*   `batch/` : Données générées (ne pas modifier manuellement).
+*   `critere_1/` : Scripts d'analyse de variance et rapports de stabilité.
+*   `critere_2/` : Scripts d'extraction de zones et calcul de SNR.
+*   `rapport_figures*` : Dossiers de sortie contenant les graphiques générés.

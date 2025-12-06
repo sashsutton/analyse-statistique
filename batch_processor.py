@@ -6,15 +6,19 @@ import warnings
 
 # --- CONFIGURATION ---
 ROOT_DIR = "./batch"  # Dossier racine
-NOISE_VALUE = -999.99
+NOISE_VALUE = -999.9999  # La valeur exacte à écrire dans le CSV final
 TOLERANCE = 1e-5
 
 
 def read_and_clean_csv(filepath):
-    """Lit un CSV et remplace -999.99 par NaN."""
+    """
+    Lit un CSV et remplace le bruit (-999.9999) par NaN
+    pour permettre les calculs mathématiques corrects.
+    """
     try:
         df = pd.read_csv(filepath, header=None, dtype=np.float32)
         matrix = df.values
+        # On convertit en NaN pour les calculs (sinon min() prendrait -999)
         matrix[matrix <= (NOISE_VALUE + TOLERANCE)] = np.nan
         return matrix
     except Exception as e:
@@ -22,24 +26,30 @@ def read_and_clean_csv(filepath):
         return None
 
 
+def save_matrix_with_noise(matrix, filepath):
+    """
+    Fonction utilitaire pour sauvegarder :
+    Remplace les NaN par NOISE_VALUE (-999.9999) avant d'écrire le CSV.
+    """
+    # On remplit les trous (NaN) avec la valeur de bruit
+    df_to_save = pd.DataFrame(matrix).fillna(NOISE_VALUE)
+
+    # On sauvegarde avec 4 décimales pour respecter le format d'origine
+    df_to_save.to_csv(filepath, header=False, index=False, float_format="%.4f")
+
+
 def compute_and_save_angle_composite(folder_path, repetition_name):
     """
-    Traite une répétition statistique (un dossier dsi_xx).
-
-    CONTEXTE : Ce dossier contient 5 scans pris sous 5 ANGLES D'INCIDENCE différents.
-    LOGIQUE  : On calcule le MINIMUM des 5 angles.
-               Cela permet de capturer la profondeur maximale (Z min) atteinte par l'air,
-               indépendamment de l'angle de prise de vue.
-
-    SORTIE   : Sauvegarde immédiate de 'min_composite_dsi_xx.csv'.
+    1. Lit les 5 angles.
+    2. Calcule le MINIMUM (en ignorant les NaN).
+    3. Restaure les -999.9999 et sauvegarde.
     """
-    # Récupération des 5 fichiers correspondant aux 5 angles
+    # Récupération des 5 fichiers
     csv_files = sorted(glob.glob(os.path.join(folder_path, "scan_*.csv")))
 
     # Fallback si les noms ne sont pas "scan_x.csv"
     if not csv_files:
         all_files = sorted(glob.glob(os.path.join(folder_path, "*.csv")))
-        # On exclut les fichiers résultats (min_composite) pour ne pas lire nos propres outputs
         csv_files = [f for f in all_files if "min_composite" not in os.path.basename(f)]
 
     valid_matrices = []
@@ -51,21 +61,21 @@ def compute_and_save_angle_composite(folder_path, repetition_name):
     if not valid_matrices:
         return None
 
-    # Empilement des 5 angles
+    # Empilement
     stack = np.array(valid_matrices)
 
-    # Calcul du MINIMUM (Pour obtenir l'empreinte maximale parmi les 5 angles)
+    # Calcul du MINIMUM (Intra-Calcul : on garde les NaN)
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
         composite_min = np.nanmin(stack, axis=0)
 
-    # --- SAUVEGARDE INTERMÉDIAIRE ---
+    # --- SAUVEGARDE (Conversion NaN -> -999.9999) ---
     output_filename = f"min_composite_{repetition_name}.csv"
     output_path = os.path.join(folder_path, output_filename)
 
     try:
-        pd.DataFrame(composite_min).to_csv(output_path, header=False, index=False)
-        print(f"    -> Sauvegardé (Composite des angles) : {repetition_name}/{output_filename}")
+        save_matrix_with_noise(composite_min, output_path)
+        # print(f"    -> Sauvegardé : {repetition_name}/{output_filename}")
     except Exception as e:
         print(f"    -> Erreur sauvegarde {repetition_name}: {e}")
 
@@ -74,11 +84,7 @@ def compute_and_save_angle_composite(folder_path, repetition_name):
 
 def process_batch(batch_path, batch_name):
     """
-    Traite un patient complet (Batch).
-
-    CONTEXTE : On dispose de 7 dossiers (dsi_01 à dsi_07) qui sont 7 RÉPÉTITIONS
-               de l'expérience dans les mêmes conditions.
-    LOGIQUE  : On fait la MOYENNE des 7 résultats pour la robustesse statistique.
+    Traite un patient complet.
     """
     dsi_root = os.path.join(batch_path, "dsi")
 
@@ -94,7 +100,7 @@ def process_batch(batch_path, batch_name):
         subfolder_path = os.path.join(dsi_root, subfolder_name)
 
         if os.path.isdir(subfolder_path):
-            # Calcul du composite (Min des angles) pour cette répétition
+            # Calcul du composite
             comp = compute_and_save_angle_composite(subfolder_path, subfolder_name)
             if comp is not None:
                 repetitions_list.append(comp)
@@ -104,12 +110,13 @@ def process_batch(batch_path, batch_name):
         return
 
     # Calcul de la MOYENNE GLOBALE des 7 répétitions
+    # (Toujours avec NaN pour la précision mathématique)
     stack_repetitions = np.array(repetitions_list)
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', r'Mean of empty slice')
         final_mean_composite = np.nanmean(stack_repetitions, axis=0)
 
-    # Sauvegarde Globale (dsi_mean_XXX.csv)
+    # --- SAUVEGARDE FINALE (Conversion NaN -> -999.9999) ---
     try:
         batch_id = batch_name.split('_')[-1]
     except:
@@ -119,23 +126,23 @@ def process_batch(batch_path, batch_name):
     save_path = os.path.join(dsi_root, filename)
 
     try:
-        pd.DataFrame(final_mean_composite).to_csv(save_path, header=False, index=False)
-        print(f"  -> SUCCESS FINAL (Moyenne Statistique) : {filename} créé dans {dsi_root}")
+        save_matrix_with_noise(final_mean_composite, save_path)
+        print(f"  -> {filename} créé (Bruit restauré).")
     except Exception as e:
         print(f"  -> Erreur écriture finale : {e}")
 
 
 def main():
     batch_folders = sorted(glob.glob(os.path.join(ROOT_DIR, "batch_*")))
-    print(f"Démarrage : {len(batch_folders)} lots détectés.\n")
+    print(f"Traitement des données brutes ({len(batch_folders)} patients)...")
 
     for batch_path in batch_folders:
         batch_name = os.path.basename(batch_path)
-        print(f"--- Traitement de {batch_name} ---")
+        # print(f"--- Traitement {batch_name} ---")
         process_batch(batch_path, batch_name)
-        print("")
 
-    print("=== TRAITEMENT TERMINÉ ===")
+    print("\n=== TRAITEMENT TERMINÉ ===")
+    print("Les fichiers dsi_mean et min_composite contiennent maintenant -999.9999 pour les zones vides.")
 
 
 if __name__ == "__main__":
